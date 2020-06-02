@@ -26,8 +26,9 @@ Function Connect-NSXTProxy {
 
     If (-Not $global:DefaultVMCServers.IsConnected) { Write-error "No valid VMC Connection found, please use the Connect-VMC to connect"; break } Else {
         $sddcService = Get-VmcService "com.vmware.vmc.orgs.sddcs"
-        $orgId = (Get-VMCOrg -Name $OrgName).Id
-        $sddcId = (Get-VMCSDDC -Name $SDDCName -Org $OrgName).Id
+        $orgService = Get-VmcService "com.vmware.vmc.orgs"
+        $orgId = ($orgService.list() | where {$_.display_name -eq $OrgName}).Id
+        $sddcId = (Get-VmcSddc -Name $SDDCName).Id
         $sddc = $sddcService.get($orgId,$sddcId)
         if($sddc.resource_config.nsxt) {
             $nsxtProxyURL = $sddc.resource_config.nsx_api_public_endpoint_url
