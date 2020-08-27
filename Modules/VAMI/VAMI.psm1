@@ -557,6 +557,10 @@ Function Get-VAMIUser {
      Blog:          www.virtuallyghetto.com
      Twitter:       @lamw
 	===========================================================================
+    Updated:        27.08.2020 by Edgar Carvalho to support 7.X
+    Blog:           vman.ch
+    Twitter         @vmandotch
+	===========================================================================
 	.SYNOPSIS
 		This function retrieves VAMI local users using VAMI interface (5480)
         for a VCSA node which can be an Embedded VCSA, External PSC or External VCSA.
@@ -575,7 +579,50 @@ Function Get-VAMIUser {
         [String]$Name
     )
 
-    $userAPI = Get-CisService 'com.vmware.appliance.techpreview.localaccounts.user'
+    $vCenterDeetz = Get-VAMISummary
+
+    If ($vCenterDeetz.Version -like '6.*' ) {
+
+        $userAPI = Get-CisService 'com.vmware.appliance.techpreview.localaccounts.user'
+
+        $userResults = @()
+
+        if($Name -ne "") {
+            try {
+                $user = $userAPI.get($name)
+
+                $userString = [pscustomobject] @{
+                    User = $user.username
+                    Name = $user.fullname
+                    Email = $user.email
+                    Status = $user.status
+                    PasswordStatus = $user.passwordstatus
+                    Role = $user.role
+                }
+                $userResults += $userString
+            } catch {
+                Write-Error $Error[0].exception.Message
+            }
+        } else {
+            $users = $userAPI.list()
+
+            foreach ($user in $users) {
+                $userString = [pscustomobject] @{
+                    User = $user.username
+                    Name = $user.fullname
+                    Email = $user.email
+                    Status = $user.status
+                    PasswordStatus = $user.passwordstatus
+                    Role = $user.role
+                }
+                $userResults += $userString
+            }
+        }
+        $userResults
+
+    }else{
+
+    $userAPI = Get-CisService 'com.vmware.appliance.local_accounts'
 
     $userResults = @()
 
@@ -599,18 +646,31 @@ Function Get-VAMIUser {
         $users = $userAPI.list()
 
         foreach ($user in $users) {
+
+            $userdeetz = $userAPI.get($user)
+
             $userString = [pscustomobject] @{
-                User = $user.username
-                Name = $user.fullname
-                Email = $user.email
-                Status = $user.status
-                PasswordStatus = $user.passwordstatus
-                Role = $user.role
+                User = $user
+                Name = $userdeetz.fullname
+                Email = $userdeetz.email
+                enabled = $userdeetz.enabled
+                PasswordStatus = $userdeetz.passwordstatus
+                has_password = $userdeetz.has_password
+                inactive_at = $userdeetz.inactive_at
+                last_password_change = $userdeetz.last_password_change
+                max_days_between_password_change = $userdeetz.usermax_days_between_password_change
+                warn_days_before_password_expiration = $userdeetz.warn_days_before_password_expiration
+                min_days_between_password_change = $userdeetz.min_days_between_password_change
+                password_expires_at = $userdeetz.password_expires_at
+                Roles = $userdeetz.roles
             }
             $userResults += $userString
+            Clear-Variable userdeetz
         }
     }
     $userResults
+
+    }
 }
 
 Function New-VAMIUser {
@@ -621,6 +681,10 @@ Function New-VAMIUser {
      Organization:  VMware
      Blog:          www.virtuallyghetto.com
      Twitter:       @lamw
+	===========================================================================
+    Updated:        27.08.2020 by Edgar Carvalho to support 7.X
+    Blog:           vman.ch
+    Twitter         @vmandotch
 	===========================================================================
 	.SYNOPSIS
 		This function to create new VAMI local user using VAMI interface (5480)
@@ -654,6 +718,10 @@ Function New-VAMIUser {
         [String]$password
     )
 
+    $vCenterDeetz = Get-VAMISummary
+
+    If ($vCenterDeetz.Version -like '6.*' ) {
+
     $userAPI = Get-CisService 'com.vmware.appliance.techpreview.localaccounts.user'
     $createSpec = $userAPI.Help.add.config.CreateExample()
 
@@ -669,6 +737,23 @@ Function New-VAMIUser {
     } catch {
         Write-Error $Error[0].exception.Message
     }
+   }else{
+
+    $userAPI = Get-CisService 'com.vmware.appliance.local_accounts'
+    $createSpec = $userAPI.help.create.config.CreateExample()
+
+    $createSpec.full_name = $fullname
+    $createSpec.roles = @($role)
+    $createSpec.email = $email
+    $createSpec.password = [VMware.VimAutomation.Cis.Core.Types.V1.Secret]$password
+
+    try {
+        Write-Host "Creating new user $name ..."
+        $userAPI.create($name, $createSpec)
+    } catch {
+        Write-Error $Error[0].exception.Message
+    }
+ }
 }
 
 Function Remove-VAMIUser {
@@ -679,6 +764,10 @@ Function Remove-VAMIUser {
      Organization:  VMware
      Blog:          www.virtuallyghetto.com
      Twitter:       @lamw
+	===========================================================================
+    Updated:        27.08.2020 by Edgar Carvalho to support 7.X
+    Blog:           vman.ch
+    Twitter         @vmandotch
 	===========================================================================
 	.SYNOPSIS
 		This function to remove VAMI local user using VAMI interface (5480)
@@ -700,10 +789,18 @@ Function Remove-VAMIUser {
         [boolean]$confirm=$false
     )
 
+    $vCenterDeetz = Get-VAMISummary
+
     if(!$confirm) {
         $answer = Read-Host -Prompt "Do you want to delete user $name (Y or N)"
         if($answer -eq "Y" -or $answer -eq "y") {
+
+            If ($vCenterDeetz.Version -like '6.*' ) {
+
             $userAPI = Get-CisService 'com.vmware.appliance.techpreview.localaccounts.user'
+            }else{
+            $userAPI = Get-CisService 'com.vmware.appliance.local_accounts'
+            }
 
             try {
                 Write-Host "Deleting user $name ..."
