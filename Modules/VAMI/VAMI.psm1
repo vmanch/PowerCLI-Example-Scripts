@@ -628,17 +628,26 @@ Function Get-VAMIUser {
 
     if($Name -ne "") {
         try {
-            $user = $userAPI.get($name)
+
+            $userdeetz = $userAPI.get($name)
 
             $userString = [pscustomobject] @{
-                User = $user.username
-                Name = $user.fullname
-                Email = $user.email
-                Status = $user.status
-                PasswordStatus = $user.passwordstatus
-                Role = $user.role
+                User = $name
+                Name = $userdeetz.fullname
+                Email = $userdeetz.email
+                enabled = $userdeetz.enabled
+                PasswordStatus = $userdeetz.passwordstatus
+                has_password = $userdeetz.has_password
+                inactive_at = $userdeetz.inactive_at
+                last_password_change = $userdeetz.last_password_change
+                max_days_between_password_change = $userdeetz.usermax_days_between_password_change
+                warn_days_before_password_expiration = $userdeetz.warn_days_before_password_expiration
+                min_days_between_password_change = $userdeetz.min_days_between_password_change
+                password_expires_at = $userdeetz.password_expires_at
+                Roles = $userdeetz.roles
             }
             $userResults += $userString
+            Clear-Variable userdeetz
         } catch {
             Write-Error $Error[0].exception.Message
         }
